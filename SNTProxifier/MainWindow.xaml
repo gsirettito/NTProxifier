@@ -1,0 +1,91 @@
+﻿<Window x:Class="SNTProxifier.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SNTProxifier"
+        mc:Ignorable="d"
+        Title="NTProxifier" Height="380" Width="600">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Style x:Key="icon" TargetType="{x:Type Run}">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="ExtraBold"/>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <DockPanel>
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="10">
+                    <TextBox x:Name="ntpServer" Width="200">0.north-america.pool.ntp.org</TextBox>
+                    <Button Click="Button_Click">Update</Button>
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock FontSize="24">
+                <Run>NTP:</Run>
+                <Run x:Name="ntp_time">00:00:00</Run>
+                    </TextBlock>
+                    <TextBlock FontSize="24">
+                <Run>HTTP:</Run>
+                <Run x:Name="http_time">00:00:00</Run>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+            <Grid DockPanel.Dock="Right">
+                <DockPanel>
+                    <StackPanel Margin="10 0" DockPanel.Dock="Top">
+                        <TextBlock Margin="5,5,5,1" FontSize="16">Proxy Setting</TextBlock>
+                        <RadioButton x:Name="noProxyRBtn" Margin="5,5,5,1" IsChecked="True" Checked="sysProxyRBtn_Checked">Disable proxy</RadioButton>
+                        <RadioButton x:Name="sysProxyRBtn" Margin="5,5,5,1" Checked="sysProxyRBtn_Checked">Use system proxy settings</RadioButton>
+                        <RadioButton x:Name="custProxyRBtn" Margin="5,5,5,1">Use custom proxy</RadioButton>
+                        <Separator Margin="5,5,5,1"/>
+                        <ItemsControl x:Name="proxy_list" Margin="5,5,5,1">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Height="30">
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Edit"/>
+                                                <MenuItem Header="Delete"/>
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
+                                        <RadioButton GroupName="proxy_list" VerticalAlignment="Center" Checked="proxyItem_Checked">
+                                            <TextBlock Text="{Binding}"/>
+                                        </RadioButton>
+                                        <Button HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <Run Style="{StaticResource icon}">&#xf142;</Run>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    <StackPanel Margin="10 0" Visibility="{Binding IsChecked, Converter={StaticResource BooleanToVisibilityConverter}, ElementName=custProxyRBtn}">
+                        <TextBlock Margin="5,0,5,1" FontSize="16">Proxy Setting</TextBlock>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.5*"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Margin="5,5,5,1">Hostname</TextBlock>
+                                <TextBox x:Name="proxy_host"  Margin="5,1"></TextBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Margin="5,5,5,1">Port</TextBlock>
+                                <TextBox x:Name="proxy_port" Margin="5,1"></TextBox>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Margin="5,10,5,1" FontSize="16">Credentials (optional)</TextBlock>
+                        <TextBlock Margin="5,5,5,1">Username</TextBlock>
+                        <TextBox x:Name="proxy_username"  Margin="5,1"></TextBox>
+                        <TextBlock Margin="5,5,5,1">Password</TextBlock>
+                        <PasswordBox x:Name="proxy_password" Margin="5,1"></PasswordBox>
+                        <Button Margin="5 5 5 1" HorizontalAlignment="Right" Click="proxyItem_Checked">Save</Button>
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
+    </Grid>
+</Window>
