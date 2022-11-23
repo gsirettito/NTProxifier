@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SNTProxifier"
         mc:Ignorable="d"
-        Title="NTProxifier" Height="380" Width="600">
+        Title="NTProxifier" Height="430" Width="500" ResizeMode="CanMinimize" >
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="icon" TargetType="{x:Type Run}">
@@ -13,29 +13,162 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="ExtraBold"/>
         </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="BorderBrush" Value="#FFD7E4FF"/>
+            <Setter Property="Background" Value="#FFFCFCFC"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="back" BorderThickness="{TemplateBinding BorderThickness}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost" RenderOptions.ClearTypeHint="Enabled"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="true">
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFE5C365"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFE5C365"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFC5C5C5"/>
+                                <Setter Property="Foreground" Value="#FFC5C5C5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="back" BorderBrush="Transparent" BorderThickness="1" SnapsToDevicePixels="True">
+                            <ContentControl x:Name="content" Content="{TemplateBinding Content}"
+                                            Foreground="#FF3B3B3B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="back" Property="Background" Value="#FFE5EBFF"/>
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFB0C1E2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="true">
+                                <Setter TargetName="back" Property="Background" Value="White"/>
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFB0C1E2"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter TargetName="content" Property="Foreground" Value="#FFA8AEC3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="{x:Type Hyperlink}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="true">
+                    <Setter Property="Foreground" Value="#FFF9C430"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="false">
+                    <Setter Property="Foreground" Value="#FFA8AEC3"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ToolBarToggleButton" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Padding" Value="4 1"/>
+            <Setter Property="Margin" Value="1 0 0 0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="back" Padding="{TemplateBinding Padding}"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                SnapsToDevicePixels="True">
+                            <ContentControl x:Name="content" Content="{TemplateBinding Content}"  Foreground="#FF3B3B3B" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="true">
+                                <Setter TargetName="back" Property="Background" Value="#FFFFEDC8"/>
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFD2A85E"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="back" Property="Background" Value="#FFE5EBFF"/>
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFB0C1E2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="true">
+                                <Setter TargetName="back" Property="Background" Value="White"/>
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFB0C1E2"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter TargetName="content" Property="Foreground" Value="#FFA8AEC3"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="true"/>
+                                    <Condition Property="IsChecked" Value="true"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="back" Property="Background" Value="#FFFFF8DF"/>
+                                <Setter TargetName="back" Property="BorderBrush" Value="#FFD2A85E"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="Padding" Value="0 5 0 2"/>
+        </Style>
     </Window.Resources>
     <Grid>
         <DockPanel>
-            <Grid>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="10">
-                    <TextBox x:Name="ntpServer" Width="200">0.north-america.pool.ntp.org</TextBox>
-                    <Button Click="Button_Click">Update</Button>
-                </StackPanel>
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock FontSize="24">
-                <Run>NTP:</Run>
+            <ToolBar DockPanel.Dock="Top">
+                <ToggleButton x:Name="enable"
+                              Unchecked="enable_Checked"
+                              Checked="enable_Checked"
+                              Style="{StaticResource ToolBarToggleButton}">Enable</ToggleButton>
+                <ToggleButton x:Name="autorun"
+                              Unchecked="autorun_Checked"
+                              Checked="autorun_Checked"
+                              Style="{StaticResource ToolBarToggleButton}">Autorun</ToggleButton>
+            </ToolBar>
+            <StackPanel VerticalAlignment="Bottom" DockPanel.Dock="Bottom" Margin="10">
+                <TextBlock>
+                <Run x:Name="proto_info">NTP:</Run>
                 <Run x:Name="ntp_time">00:00:00</Run>
-                    </TextBlock>
-                    <TextBlock FontSize="24">
-                <Run>HTTP:</Run>
+                </TextBlock>
+                <TextBlock>
+                <Run>result:</Run>
                 <Run x:Name="http_time">00:00:00</Run>
-                    </TextBlock>
+                </TextBlock>
+            </StackPanel>
+            <Grid>
+                <StackPanel VerticalAlignment="Top" Margin="10">
+                    <CheckBox IsChecked="True">
+                        <TextBox x:Name="ntp1Server" Width="200" IsEnabled="{Binding IsChecked, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type CheckBox}}}">0.north-america.pool.ntp.org</TextBox>
+                    </CheckBox>
+                    <CheckBox IsChecked="True">
+                        <TextBox x:Name="ntp2Server" Margin="0 1" Width="200" IsEnabled="{Binding IsChecked, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type CheckBox}}}">1.north-america.pool.ntp.org</TextBox>
+                    </CheckBox>
+                    <CheckBox IsChecked="True">
+                        <TextBox x:Name="ntp3Server" Margin="0 1" Width="200" IsEnabled="{Binding IsChecked, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type CheckBox}}}">2.north-america.pool.ntp.org</TextBox>
+                    </CheckBox>
+                    <CheckBox IsChecked="True">
+                        <TextBox x:Name="ntp4Server" Width="200" IsEnabled="{Binding IsChecked, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type CheckBox}}}">3.north-america.pool.ntp.org</TextBox>
+                    </CheckBox>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="10 5">
+                        <Button Click="Button_Click" IsDefault="True" Width="64" Padding="6 2">Update</Button>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
             <Grid DockPanel.Dock="Right">
                 <DockPanel>
                     <StackPanel Margin="10 0" DockPanel.Dock="Top">
-                        <TextBlock Margin="5,5,5,1" FontSize="16">Proxy Setting</TextBlock>
+                        <TextBlock Margin="5,5,5,1" FontSize="16">HTTP Proxy Setting</TextBlock>
                         <RadioButton x:Name="noProxyRBtn" Margin="5,5,5,1" IsChecked="True" Checked="sysProxyRBtn_Checked">Disable proxy</RadioButton>
                         <RadioButton x:Name="sysProxyRBtn" Margin="5,5,5,1" Checked="sysProxyRBtn_Checked">Use system proxy settings</RadioButton>
                         <RadioButton x:Name="custProxyRBtn" Margin="5,5,5,1">Use custom proxy</RadioButton>
@@ -82,10 +215,18 @@
                         <TextBox x:Name="proxy_username"  Margin="5,1"></TextBox>
                         <TextBlock Margin="5,5,5,1">Password</TextBlock>
                         <PasswordBox x:Name="proxy_password" Margin="5,1"></PasswordBox>
-                        <Button Margin="5 5 5 1" HorizontalAlignment="Right" Click="proxyItem_Checked">Save</Button>
+                        <Button Margin="5 5 5 1" HorizontalAlignment="Right" Click="proxyItem_Checked" Width="64" Padding="6 2">Save</Button>
                     </StackPanel>
                 </DockPanel>
             </Grid>
         </DockPanel>
+        <TextBlock
+            VerticalAlignment="Top" HorizontalAlignment="Right"
+            Margin="12,0"
+            FontSize="9" TextAlignment="Center">
+                <Run>Created by: Guillermo Siret Tito</Run>
+                <LineBreak/>
+                <Hyperlink NavigateUri="mailto://guillermosiret@gmail.com">guillermosiret@gmail.com</Hyperlink>
+        </TextBlock>
     </Grid>
 </Window>

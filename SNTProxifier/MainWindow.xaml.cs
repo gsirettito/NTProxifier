@@ -1,12 +1,16 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using SiretT;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -47,6 +51,18 @@ namespace SNTProxifier {
         public int dwAccessType;
         public IntPtr proxy;
         public IntPtr proxyBypass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SYSTEMTIME {
+        public short wYear;
+        public short wMonth;
+        public short wDayOfWeek;
+        public short wDay;
+        public short wHour;
+        public short wMinute;
+        public short wSecond;
+        public short wMilliseconds;
     }
 
     #region COM Interfaces
@@ -127,6 +143,18 @@ namespace SNTProxifier {
     /// Lógica de interacción para MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool SetSystemTime(ref SYSTEMTIME st);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool SetLocalTime(ref SYSTEMTIME st);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetSystemTime(ref SYSTEMTIME st);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetLocalTime(ref SYSTEMTIME st);
+
         [DllImport("wininet.dll", CharSet = CharSet.Auto, SetLastError = true)]
         static extern bool InternetGetCookieEx(string pchURL, string pchCookieName, StringBuilder pchCookieData, ref uint pcchCookieData, int dwFlags, IntPtr lpReserved);
         const int INTERNET_COOKIE_HTTPONLY = 0x00002000;
@@ -145,22 +173,69 @@ namespace SNTProxifier {
         private string timeanddate_url = "https://www.timeanddate.com/scripts/ts.php?";
         private string timeanddate_referer = "https://www.timeanddate.com/worldclock/cuba/havana";
         private string _currentUsername;
-        private string _currentPassword;
+        protected string _currentPassword;
         private IWebProxy proxy;
         private Uri defaultUri = new Uri("http://www.google.com");
+        private IniFile ini;
+        private string iniPath;
+        private bool isBusy;
+        private AssemblyName assembly;
+
+        protected string SecretKey { get; private set; }
 
         public MainWindow() {
             InitializeComponent();
-
+            SecretKey = "C7A04BDB-6518-4619-AEA9-52E1F2616036";
+            iniPath = System.IO.Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]) + "\\config.ini";
+            ini = new IniFile(iniPath);
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            var secureString = ini.GetValue("Proxy\\SecureString", (object)"").ToString();
+            ntp1Server.Text = ini.GetValue("Servers\\Server1", (object)ntp1Server.Text).ToString();
+            ntp2Server.Text = ini.GetValue("Servers\\Server2", (object)ntp2Server.Text).ToString();
+            ntp3Server.Text = ini.GetValue("Servers\\Server3", (object)ntp3Server.Text).ToString();
+            ntp4Server.Text = ini.GetValue("Servers\\Server4", (object)ntp4Server.Text).ToString();
+            var uri = SiretT.Crypto.Decrypt(Encoding.UTF8.GetString(Convert.FromBase64String(secureString)), $"{{{SecretKey}}}", System.Security.Cryptography.CipherMode.ECB);
+            var credentialParts = uri.Split("@:".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+            proxy_host.Text = credentialParts[0];
+            proxy_port.Text = credentialParts[1];
+            if (credentialParts.Length > 2) {
+                proxy_username.Text = Uri.UnescapeDataString(credentialParts[2]);
+                proxy_password.Password = Uri.UnescapeDataString(credentialParts[3]);
+            }
+            assembly = Assembly.GetExecutingAssembly().GetName();
+            this.Title = assembly.Name + " - " + assembly.Version;
+            autorun.IsChecked = (bool)ini.GetValue("Main\\Autorun", false);
+            enable.IsChecked = (bool)ini.GetValue("Main\\Enabled", false);
         }
 
-        private DateTime NTPUpdate() {
+        protected override void OnSourceInitialized(EventArgs e) {
+            base.OnSourceInitialized(e);
+            var left = ini.GetValue("Main\\Left", (int)Left);
+            var top = ini.GetValue("Main\\Top", (int)Top);
+            Left = left is int ? (int)left : Left;
+            Top = top is int ? (int)top : Top;
+        }
+
+        protected override void OnClosed(EventArgs e) {
+            base.OnClosed(e);
+            ini.AddOrUpdate("Main\\Left", this.Left);
+            ini.AddOrUpdate("Main\\Top", this.Top);
+            ini.AddOrUpdate("Main\\Autorun", this.autorun.IsChecked);
+            ini.AddOrUpdate("Main\\Enabled", this.enable.IsChecked);
+            ini.AddOrUpdate("Servers\\Server1", ntp1Server.Text);
+            ini.AddOrUpdate("Servers\\Server2", ntp2Server.Text);
+            ini.AddOrUpdate("Servers\\Server3", ntp3Server.Text);
+            ini.AddOrUpdate("Servers\\Server4", ntp4Server.Text);
+            ini.Save();
+        }
+
+        private bool NTPUpdate(string ntpServer, out DateTime dateTime) {
+            dateTime = new DateTime();
             var ntpData = new byte[SNTPDataLength];
             ntpData[0] = 0x1B;
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             socket.ReceiveTimeout = 5000;
-            var host = ntpServer.Text;
+            var host = ntpServer;
             try {
                 socket.Connect(host, 123);
                 socket.Send(ntpData);
@@ -183,14 +258,16 @@ namespace SNTProxifier {
                 var milliseconds = intPart * 1000 + fractPart * 1000 / 0x100000000L;
                 var networkDateTime = new DateTime(1900, 1, 1).AddMilliseconds((long)milliseconds);
                 var finalTime = TimeZoneInfo.ConvertTimeFromUtc(networkDateTime, TimeZoneInfo.Local);
-                return finalTime;
+                dateTime = finalTime;
+                return true;
             } catch (Exception ex) {
-                MessageBox.Show(ex.Message, "NTP Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                //MessageBox.Show(ex.Message, "NTP Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            return DateTime.Now;
+            return false;
         }
 
-        private DateTime HTTP_NTP() {
+        private bool HTTP_NTP(out DateTime dateTime) {
+            dateTime = new DateTime();
             try {
                 //proxy = WebRequest.GetSystemWebProxy();
                 //proxy = new WebProxy();
@@ -208,11 +285,14 @@ namespace SNTProxifier {
                 var milliseconds = long.Parse(milliString.Split('.')[1]);
 
                 var now = EpochTime.AddSeconds(seconds).AddMilliseconds(0 * milliseconds);
-                return now;
+                //return now;
+                dateTime = now;
+                return true;
             } catch (Exception ex) {
-                MessageBox.Show(ex.Message, "HTTP Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                //MessageBox.Show(ex.Message, "HTTP Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            return DateTime.Now;
+            return false;
+            //return DateTime.Now;
         }
 
         private void SetProxyServer(string proxy) {
@@ -292,8 +372,56 @@ namespace SNTProxifier {
         #endregion
 
         private void Button_Click(object sender, RoutedEventArgs e) {
-            ntp_time.Text = NTPUpdate().ToString();
-            http_time.Text = HTTP_NTP().ToString();
+            DateTime dateTime;
+            if (isBusy) return;
+            var server1 = ntp1Server.Text;
+            var server2 = ntp2Server.Text;
+            var server3 = ntp3Server.Text;
+            var server4 = ntp4Server.Text;
+            var isServer1 = ntp1Server.IsEnabled;
+            var isServer2 = ntp2Server.IsEnabled;
+            var isServer3 = ntp3Server.IsEnabled;
+            var isServer4 = ntp4Server.IsEnabled;
+            var wServer = server1;
+            var proto = "NTP";
+            (sender as Button).IsEnabled = false;
+            new Thread(new ThreadStart(() => {
+                isBusy = true;
+                if (isServer1 && NTPUpdate(server1, out dateTime)) {
+                    wServer = server1;
+                } else if (isServer2 && NTPUpdate(server2, out dateTime)) {
+                    wServer = server2;
+                } else if (isServer3 && NTPUpdate(server3, out dateTime)) {
+                    wServer = server3;
+                } else if (isServer4 && NTPUpdate(server4, out dateTime)) {
+                    wServer = server4;
+                } else if (HTTP_NTP(out dateTime)) {
+                    proto = "HTTP";
+                    wServer = timeanddate_referer;
+                } else {
+                    dateTime = DateTime.Now;
+                }
+                this.Dispatcher.Invoke(new Action(() => {
+                    ntp_time.Text = wServer;
+                    http_time.Text = dateTime.ToString();
+                    proto_info.Text = $"{proto}:";
+                    if (enable.IsChecked == true) {
+                        SYSTEMTIME st = new SYSTEMTIME();
+                        //GetLocalTime(ref st);
+                        st.wYear = (short)dateTime.Year;
+                        st.wMonth = (short)dateTime.Month;
+                        st.wDay = (short)dateTime.Day;
+                        st.wHour = (short)dateTime.Hour;
+                        st.wMinute = (short)dateTime.Minute;
+                        st.wSecond = (short)dateTime.Second;
+                        st.wMilliseconds = (short)dateTime.Millisecond;
+                        //SetSystemTime(ref st);
+                        SetLocalTime(ref st);
+                    }
+                    (sender as Button).IsEnabled = true;
+                }));
+                isBusy = false;
+            })).Start();
         }
 
         private void sysProxyRBtn_Checked(object sender, RoutedEventArgs e) {
@@ -320,13 +448,39 @@ namespace SNTProxifier {
         }
 
         private void proxyItem_Checked(object sender, RoutedEventArgs e) {
-            proxy = new WebProxy($"{proxy_host.Text}:{proxy_port.Text}");
-            _currentUsername = "";
-            _currentPassword = "";
-            SetProxyServer($"{proxy_host.Text}:{proxy_port.Text}");
-            proxy.Credentials = new NetworkCredential(proxy_username.Text, proxy_password.Password);
-            _currentUsername = proxy_username.Text;
+            var host = proxy_host.Text.Trim();
+            var port = proxy_port.Text.Trim();
+            proxy = new WebProxy($"{host}:{port}");
+            _currentUsername = proxy_username.Text.Trim();
             _currentPassword = proxy_password.Password;
+            SetProxyServer($"{host}:{port}");
+            proxy.Credentials = new NetworkCredential(_currentUsername, _currentPassword);
+            var proxySecureString = "";
+            var proxy_server = "";
+            if (string.IsNullOrEmpty(_currentUsername.Trim()))
+                proxy_server = $"{host}:{port}";
+            else
+                proxy_server = $"{host}:{port}@{Uri.EscapeDataString(_currentUsername)}:{Uri.EscapeDataString(_currentPassword)}";
+
+            proxySecureString = Convert.ToBase64String(Encoding.UTF8.GetBytes(Crypto.Encrypt(proxy_server, $"{{{SecretKey}}}", System.Security.Cryptography.CipherMode.ECB)));
+            ini.AddOrUpdate("Proxy\\SecureString", proxySecureString);
+            ini.Save();
+        }
+
+        private void enable_Checked(object sender, RoutedEventArgs e) {
+            ini.AddOrUpdate("Main\\Enabled", this.enable.IsChecked);
+            ini.Save();
+        }
+
+        private void autorun_Checked(object sender, RoutedEventArgs e) {
+            RegistryKey rk = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            if (autorun.IsChecked == true)
+                rk.SetValue(assembly.Name, '"' + Environment.GetCommandLineArgs()[0] + '"', RegistryValueKind.String);
+            else
+                rk.DeleteValue(assembly.Name);
+            rk.Close();
+            ini.AddOrUpdate("Main\\Autorun", this.autorun.IsChecked);
+            ini.Save();
         }
     }
 }
